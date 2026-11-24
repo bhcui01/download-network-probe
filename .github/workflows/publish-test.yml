@@ -1,0 +1,29 @@
+name: Publish synthetic download samples
+
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/publish-test.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Publish the verified samples
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 2 --max-time 60 \
+            https://top1-download-check.pages.dev/network-probe.bin \
+            --output download-probe-16m.bin
+          echo 'f20b2c82dc2e7516f4bef4c10e51fe7ec12c1eb327b14c9af7c279e11352afe1  download-probe-16m.bin' | sha256sum -c -
+          head -c 1048576 download-probe-16m.bin > download-probe-1m.bin
+          gh release create v0.1.0-test download-probe-1m.bin download-probe-16m.bin \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+            --title 'Synthetic network benchmark files' \
+            --notes 'Random bytes for HTTP download and resume tests. The 16 MiB sample matches the Cloudflare Pages test byte for byte.'
